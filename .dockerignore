@@ -1,0 +1,51 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+.env
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Data (não incluir dados brutos no container)
+data/raw/
+*.xlsx
+*.csv
+
+# Notebooks
+notebooks/
+*.ipynb
+
+# Logs antigos
+logs/*.log
+logs/*.json
+
+# Testes
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentação
+*.md
+!README.md
+
+# OS
+.DS_Store
+Thumbs.db
