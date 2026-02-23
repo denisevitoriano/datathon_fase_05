@@ -29,8 +29,8 @@ COPY src/ ./src/
 COPY app/ ./app/
 
 # Copia modelo e artefatos (se existirem)
-COPY app/model/*.joblib ./app/model/ 2>/dev/null || true
-COPY app/model/*.json ./app/model/ 2>/dev/null || true
+COPY app/model/*.joblib ./app/model/
+COPY app/model/*.json ./app/model/
 
 # Cria diretório de logs
 RUN mkdir -p logs

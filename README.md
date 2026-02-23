@@ -31,7 +31,7 @@ Pipeline completa de Machine Learning incluindo:
 ## 2. Estrutura do Projeto
 
 ```
-passos-magicos-ml/
+datathon_fase_05/
 ├── app/                          # API FastAPI
 │   ├── main.py                   # Aplicação principal
 │   ├── routes.py                 # Endpoints de predição
@@ -98,7 +98,7 @@ pip install uv
 ```bash
 # Clone o repositório
 git clone <repository-url>
-cd passos-magicos-ml
+cd datathon_fase_05
 
 # Instale as dependências (cria .venv automaticamente)
 uv sync --all-extras
@@ -512,6 +512,9 @@ curl http://localhost:8000/health
 ```bash
 # Instalar dependências
 uv sync --all-extras
+
+# Gerar o arquivo requirements.txt com todas as bibliotecas externas e suas versões específicas necessárias para o projeto
+uv pip compile pyproject.toml -o requirements.txt
 
 # Treinar modelo
 uv run python -m src.pipeline
