@@ -1,11 +1,12 @@
 """
 API FastAPI para predição de risco de defasagem escolar.
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
 from datetime import datetime
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.routes import router
 from app.monitoring_routes import router as monitoring_router
@@ -67,7 +68,7 @@ app.include_router(router)
 app.include_router(monitoring_router)
 
 
-@app.get("/")
+@app.get("/", tags=["Default"])
 async def root():
     """Endpoint raiz com informações da API."""
     return {
@@ -85,6 +86,9 @@ async def root():
         "timestamp": datetime.now().isoformat()
     }
 
+Instrumentator().instrument(app).expose(app,
+                                        endpoint="/metrics",
+                                        include_in_schema=False)
 
 if __name__ == "__main__":
     import uvicorn

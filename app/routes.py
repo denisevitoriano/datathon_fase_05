@@ -18,7 +18,6 @@ from app.model.predictor import (
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-
 @router.post("/predict", response_model=PredictionOutput, tags=["Predição"])
 async def predict_risk(student: StudentInput):
     """

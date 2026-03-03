@@ -30,6 +30,10 @@ openpyxl==3.1.5
     # via passos-magicos-ml (pyproject.toml)
 pandas==3.0.1
     # via passos-magicos-ml (pyproject.toml)
+prometheus-client==0.24.1
+    # via prometheus-fastapi-instrumentator
+prometheus-fastapi-instrumentator==7.1.0
+    # via passos-magicos-ml (pyproject.toml)
 pydantic==2.12.5
     # via
     #   passos-magicos-ml (pyproject.toml)
@@ -47,7 +51,9 @@ scipy==1.17.1
 six==1.17.0
     # via python-dateutil
 starlette==0.52.1
-    # via fastapi
+    # via
+    #   fastapi
+    #   prometheus-fastapi-instrumentator
 threadpoolctl==3.6.0
     # via scikit-learn
 typing-extensions==4.15.0
