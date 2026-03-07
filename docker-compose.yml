@@ -24,6 +24,7 @@ services:
 
   prometheus:
     image: prom/prometheus:v3.9.1
+    restart: unless-stopped
     ports:
       - "9090:9090"
     networks:
@@ -38,7 +39,23 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
-      - '--web.enable-lifecycle'  
+      - '--web.enable-lifecycle'
+
+  grafana:
+    image: grafana/grafana-oss:12.3.1
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - app-network
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false    
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana_data:/var/lib/grafana    
 
 networks:
   app-network:
@@ -46,14 +63,4 @@ networks:
 
 volumes:
   prometheus_data: {}
-
-  # Serviço opcional para monitoramento
-  # Descomente se desejar usar Prometheus/Grafana
-  # prometheus:
-  #   image: prom/prometheus:latest
-  #   ports:
-  #     - "9090:9090"
-  #   volumes:
-  #     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-  #   depends_on:
-  #     - api
+  grafana_data: {}

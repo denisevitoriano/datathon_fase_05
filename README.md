@@ -61,6 +61,7 @@ datathon_fase_05/
 │   ├── test_utils.py
 │   └── test_api.py
 │
+├── dashboard/
 ├── data/
 │   ├── raw/                      # Dados brutos
 │   └── processed/                # Dados processados
@@ -134,6 +135,7 @@ docker build -t passos-magicos-api .
 docker run -p 8000:8000 passos-magicos-api
 
 # Ou use docker-compose
+docker compose build --no-cache
 docker-compose up -d
 ```
 
@@ -281,7 +283,7 @@ print(response.json())
 - **F1-Score**: Média harmônica de precision e recall
 - **ROC-AUC**: Área sob a curva ROC
 
-## 6. Monitoramento
+## 6. Monitoramento do Modelo
 
 ### Endpoints de Monitoramento
 
@@ -297,7 +299,21 @@ print(response.json())
 - **Population Stability Index (PSI)**: Quantifica a magnitude do drift
 - Threshold configurável (default: p-value < 0.05 ou PSI > 0.2)
 
-## 7. Variável Target e Interpretação
+## 7. Monitoramento da Aplicação
+
+Para o monitoramento da aplicação foi construído um Dashboard com as tecnologias Prometheus e Grafana aplicando "Os 4 Sinais de Ouro (Four Golden Signals)" popularizados pelo Google no seu livro de SRE. Eles servem como as métricas essenciais para monitorar sistemas distribuídos, a saber:
+
+- **Latência (Latency):** é o tempo que leva para uma requisição ser processada. É crucial distinguir entre a latência de requisições bem-sucedidas e a de requisições que falharam.
+
+- **Tráfego (Traffic):** é a medida de quanta demanda está sendo colocada no seu sistema.
+
+- **Erros (Errors):** representa a taxa de requisições que falham. 
+
+- **Saturação (Saturation):** mede o quão "cheio" está o seu serviço. Ela foca nos recursos mais restritos do sistema.
+
+O arquivo **dashboard-datathon-passos-magicos.json** localizado na pasta **dashboard** poderá ser importado na ferramenta Grafana (http://localhost:3000/).
+
+## 8. Variável Target e Interpretação
 
 ### Defasagem Escolar
 A variável `defasagem` representa a diferença entre a fase atual do estudante e a fase ideal baseada na idade:
@@ -317,21 +333,21 @@ A variável `defasagem` representa a diferença entre a fase atual do estudante 
 | 0.3 - 0.7 | Médio | Atenção especial |
 | > 0.7 | Alto | Intervenção prioritária |
 
-## 8. Considerações Éticas
+## 9. Considerações Éticas
 
 - As predições devem ser usadas como **ferramenta de apoio**, não como decisão final
 - Recomenda-se análise complementar por profissionais de educação
 - O modelo visa **identificar** estudantes que precisam de mais atenção, não rotulá-los
 - Atualizações periódicas são necessárias para manter a relevância do modelo
 
-## 9. Limitações
+## 10. Limitações
 
 - Modelo treinado com dados específicos da Associação Passos Mágicos
 - Performance pode variar para contextos educacionais diferentes
 - Requer features específicas do programa para predições precisas
 - Dados históricos (Pedra anterior, INDE anterior) melhoram a precisão
 
-## 10. Guia de Testes Manuais
+## 11. Guia de Testes Manuais
 
 ### Passo 1: Preparar o Ambiente
 
@@ -496,18 +512,19 @@ curl http://localhost:8000/health
 
 ### Checklist de Validação
 
-- [ ] Ambiente instalado com `uv sync`
-- [ ] Modelo treinado com sucesso
-- [ ] Artefatos salvos em `app/model/`
-- [ ] API inicia sem erros
-- [ ] Health check retorna `status: healthy`
-- [ ] Predição individual funciona
-- [ ] Predição em lote funciona
-- [ ] Swagger UI acessível em `/docs`
-- [ ] 119 testes passando
-- [ ] Docker build funciona (opcional)
+- [X] Ambiente instalado com `uv sync`
+- [X] Modelo treinado com sucesso
+- [X] Artefatos salvos em `app/model/`
+- [X] API inicia sem erros
+- [X] Health check retorna `status: healthy`
+- [X] Predição individual funciona
+- [X] Predição em lote funciona
+- [X] Swagger UI acessível em `/docs`
+- [X] 119 testes passando
+- [X] Docker build funciona
+- [X] Monitoramento da aplicação com Prometheus e Grafana
 
-## 11. Comandos Úteis
+## 12. Comandos Úteis
 
 ```bash
 # Instalar dependências
@@ -535,7 +552,7 @@ docker build -t passos-magicos-api .
 docker run -p 8000:8000 passos-magicos-api
 ```
 
-## 12. Autores
+## 13. Autores
 
 Projeto desenvolvido para o Datathon - Pós Tech FIAP
 
