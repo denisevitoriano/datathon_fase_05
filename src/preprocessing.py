@@ -153,7 +153,7 @@ def standardize_column_names(df: pd.DataFrame) -> pd.DataFrame:
 
     # Avaliações
     if 'Nº Av' in df.columns:
-        column_mapping['Nº Av'] = 'num_avaliacoes'
+        column_mapping['Nº Av'] = 'num_avaliadores'
 
     # Status
     if 'Ativo/ Inativo' in df.columns:
@@ -187,7 +187,7 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
 
     # Converte colunas numéricas
     numeric_cols = ['inde', 'iaa', 'ieg', 'ips', 'ipp', 'ida', 'ipv', 'ian',
-                    'mat', 'por', 'ing', 'idade', 'ano_ingresso', 'num_avaliacoes']
+                    'mat', 'por', 'ing', 'idade', 'ano_ingresso']
 
     for col in numeric_cols:
         if col in df.columns:
@@ -235,8 +235,9 @@ def remove_leaky_features(df: pd.DataFrame) -> pd.DataFrame:
         DataFrame sem features com vazamento
     """
     # IAN (Indicador de Adequação a Nível) é essencialmente o target
+    # INDE é calculado a partir do IAN, portanto também contém vazamento
     # fase_ideal também contém informação do target
-    leaky_cols = ['ian', 'fase_ideal', 'defasagem']
+    leaky_cols = ['ian', 'inde', 'fase_ideal', 'defasagem']
 
     df = df.drop(columns=[c for c in leaky_cols if c in df.columns], errors='ignore')
     logger.info(f"Features com vazamento removidas: {leaky_cols}")
