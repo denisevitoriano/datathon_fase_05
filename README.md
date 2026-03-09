@@ -26,7 +26,7 @@ Pipeline completa de Machine Learning incluindo:
 | Serialização | joblib |
 | Testes | pytest (119 testes, 74% cobertura) |
 | Empacotamento | Docker |
-| Monitoramento | logging + drift detection |
+| Monitoramento | Prometheus + Grafana + drift detection |
 
 ## 2. Estrutura do Projeto
 
@@ -34,6 +34,7 @@ Pipeline completa de Machine Learning incluindo:
 datathon_fase_05/
 ├── app/                          # API FastAPI
 │   ├── main.py                   # Aplicação principal
+│   ├── metrics.py                # Métricas Prometheus do modelo
 │   ├── monitoring_routes.py      # Endpoints de monitoramento
 │   ├── routes.py                 # Endpoints de predição
 │   ├── schemas.py                # Schemas Pydantic
@@ -45,6 +46,13 @@ datathon_fase_05/
 │
 ├── dashboard/
 │   └── dashboard-datathon-passos-magicos.json  # Dashboard Grafana
+│
+├── grafana/
+│   └── provisioning/
+│       ├── datasources/
+│       │   └── datasource.yml    # Configuração automática do Prometheus
+│       └── dashboards/
+│           └── dashboard.yml     # Provisionamento automático do dashboard
 │
 ├── data/
 │   ├── processed/                 # Dados pré-processados
@@ -211,7 +219,7 @@ uv run pytest --cov-report=html
 - [ ] Swagger UI acessível em `/docs`
 - [ ] Testes passando com ~91% de cobertura
 - [ ] Docker Compose sobe API, Prometheus e Grafana
-- [ ] Dashboard Grafana importado e funcional
+- [ ] Dashboard Grafana carregado automaticamente (provisionamento)
 
 ## 4. Exemplos de Chamadas à API
 
@@ -464,7 +472,7 @@ Drift é reportado quando **qualquer um** dos thresholds é ultrapassado em pelo
 
 ## 7. Monitoramento da Aplicação
 
-A aplicação utiliza **Prometheus** e **Grafana** para monitoramento em tempo real, com métricas expostas automaticamente no endpoint `/metrics` via `prometheus-fastapi-instrumentator`.
+A aplicação utiliza **Prometheus** e **Grafana** para monitoramento em tempo real, com métricas expostas automaticamente no endpoint `/metrics` via `prometheus-fastapi-instrumentator` e métricas customizadas do modelo via `prometheus-client`.
 
 ### Arquitetura
 
@@ -475,24 +483,63 @@ API FastAPI ──(/metrics)──> Prometheus ──(datasource)──> Grafana
 
 - **Prometheus** coleta métricas da API a cada 15 segundos (configurado em `prometheus.yaml`)
 - **Grafana** consome os dados do Prometheus e exibe nos dashboards
+- O datasource e o dashboard são **provisionados automaticamente** ao subir os containers (via `grafana/provisioning/`)
 
-### Os 4 Sinais de Ouro (Four Golden Signals)
+### Dashboard
 
-O dashboard foi construído seguindo os "Four Golden Signals" do livro de SRE do Google:
+O dashboard "Datathon - Passos Mágicos" é carregado automaticamente ao subir o Grafana via `docker-compose`. Basta acessar http://localhost:3000 (login: `admin` / `admin`) e o dashboard já estará disponível.
 
-- **Latência (Latency):** tempo de processamento das requisições, distinguindo entre requisições bem-sucedidas e falhas
-- **Tráfego (Traffic):** volume de requisições recebidas pelo sistema
-- **Erros (Errors):** taxa de requisições que falharam
-- **Saturação (Saturation):** nível de utilização dos recursos do sistema
+O dashboard é dividido em duas seções:
 
-### Importação do Dashboard
+#### Seção 1: Latência, Tráfego e Taxa de Erros (Four Golden Signals)
 
-O arquivo `dashboard/dashboard-datathon-passos-magicos.json` contém o dashboard pré-configurado. Para importá-lo:
+Construída seguindo os "Four Golden Signals" do livro de SRE do Google:
 
-1. Acesse o Grafana em http://localhost:3000 (login: `admin` / `admin`)
-2. Vá em **Dashboards** > **Import**
-3. Faça upload do arquivo JSON ou cole seu conteúdo
-4. Selecione o datasource **Prometheus** e clique em **Import**
+| Painel | Tipo | Descrição |
+|--------|------|-----------|
+| Painel de Latência | Time series | P99, P95 e P50 do tempo de resposta das requisições HTTP |
+| Painel de Tráfego | Time series | Requests/s agrupados por código de status HTTP |
+| Painel de Taxa de Erros | Gauge | Percentual de requisições com status 4xx/5xx |
+| Saturação de CPU | Gauge | Uso de CPU do processo da API |
+| Saturação de Memória | Gauge | Uso de memória do processo em MB |
+
+#### Seção 2: Métricas do Modelo
+
+Métricas específicas do modelo de ML, instrumentadas via `prometheus-client`:
+
+| Painel | Tipo | Descrição |
+|--------|------|-----------|
+| Predições por Classificação | Time series | Volume de predições "Em Risco" vs "Sem Risco" ao longo do tempo |
+| Latência de Inferência | Time series | P99 e P50 do tempo de inferência do modelo (sem overhead HTTP) |
+| Taxa de Estudantes em Risco | Gauge | Percentual de estudantes classificados em risco |
+| Total de Predições | Stat | Contador acumulado de predições realizadas |
+| Status de Data Drift | Stat | Indica se drift foi detectado (verde = sem drift, vermelho = drift) |
+| Features com Drift | Stat | Número de features com drift vs total monitoradas |
+| Distribuição de Probabilidade de Risco | Bar chart | Histograma das probabilidades retornadas pelo modelo |
+
+### Métricas Prometheus Expostas
+
+#### Métricas de infraestrutura (via `prometheus-fastapi-instrumentator`)
+
+| Métrica | Tipo | Descrição |
+|---------|------|-----------|
+| `http_request_duration_seconds` | Histogram | Duração das requisições HTTP |
+| `http_requests_total` | Counter | Total de requisições por status |
+| `process_cpu_seconds_total` | Counter | Tempo de CPU do processo |
+| `process_resident_memory_bytes` | Gauge | Memória residente do processo |
+
+#### Métricas do modelo (via `app/metrics.py`)
+
+| Métrica | Tipo | Descrição |
+|---------|------|-----------|
+| `model_predictions_total` | Counter | Total de predições por classificação (`at_risk` / `not_at_risk`) |
+| `model_prediction_probability` | Histogram | Distribuição das probabilidades de risco |
+| `model_prediction_latency_seconds` | Histogram | Tempo de inferência do modelo |
+| `model_batch_size` | Histogram | Tamanho dos lotes de predição |
+| `model_at_risk_rate` | Gauge | Taxa atual de estudantes em risco |
+| `model_drift_detected` | Gauge | Indica se drift foi detectado (0 ou 1) |
+| `model_drift_features_count` | Gauge | Número de features com drift |
+| `model_drift_total_features` | Gauge | Total de features monitoradas |
 
 ## 8. Considerações Éticas
 
