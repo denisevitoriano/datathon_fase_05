@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pandas as pd
 import numpy as np
+from sklearn.model_selection import train_test_split
 from typing import Dict, Any, Tuple
 import logging
 import json
@@ -20,7 +21,7 @@ from src.preprocessing import (
 )
 from src.feature_engineering import (
     prepare_features_for_training, fit_preprocessor,
-    save_preprocessor, get_feature_names
+    transform_data, save_preprocessor, get_feature_names
 )
 from src.train import (
     train_and_evaluate, save_model, compare_models, get_feature_importance
@@ -74,6 +75,12 @@ def run_pipeline(
     df = create_target(df, binary=True)
     df = remove_leaky_features(df)
 
+    # 2.1 Salva dados pré-processados
+    processed_path = get_data_path('dados_preprocessados.csv', 'processed')
+    processed_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(processed_path, index=False)
+    logger.info(f"Dados pré-processados salvos em {processed_path}")
+
     # 3. Feature Engineering
     logger.info("Executando feature engineering...")
     df, numeric_features, categorical_features = prepare_features_for_training(df)
@@ -93,13 +100,31 @@ def run_pipeline(
     logger.info(f"Shape dos dados: X={X.shape}, y={y.shape}")
     logger.info(f"Distribuição do target: {y.value_counts().to_dict()}")
 
-    # 5. Fit preprocessor e transforma dados
-    preprocessor, X_transformed = fit_preprocessor(X, numeric_features, categorical_features)
+    # 4.1 Split treino/teste (antes do preprocessamento para evitar data leakage)
+    X_train_raw, X_test_raw, y_train, y_test = train_test_split(
+        X, y,
+        test_size=config['data']['test_size'],
+        random_state=config['data']['random_state'],
+        stratify=y
+    )
+    logger.info(f"Split: {X_train_raw.shape[0]} treino, {X_test_raw.shape[0]} teste")
+
+    # 4.2 Salva dados de treino (features + target, apenas treino)
+    train_df = X_train_raw.copy()
+    train_df['target'] = y_train.values
+    train_path = get_data_path('dados_treino.csv', 'train')
+    train_path.parent.mkdir(parents=True, exist_ok=True)
+    train_df.to_csv(train_path, index=False)
+    logger.info(f"Dados de treino salvos em {train_path}")
+
+    # 5. Fit preprocessor apenas no treino e transforma ambos
+    preprocessor, X_train = fit_preprocessor(X_train_raw, numeric_features, categorical_features)
+    X_test = transform_data(X_test_raw, preprocessor)
 
     # 6. Compara modelos (opcional)
     if compare:
         logger.info("Comparando modelos...")
-        comparison = compare_models(X_transformed, y.values)
+        comparison = compare_models(X_train, X_test, y_train.values, y_test.values)
         logger.info(f"\nComparação de modelos:\n{comparison.to_string()}")
         metrics_logger.log_metrics(comparison.to_dict('records'), 'model_comparison')
 
@@ -111,10 +136,8 @@ def run_pipeline(
     # 7. Treina modelo final
     logger.info(f"Treinando modelo final: {model_type}")
     model, metrics = train_and_evaluate(
-        X_transformed, y.values,
+        X_train, X_test, y_train.values, y_test.values,
         model_type=model_type,
-        test_size=config['data']['test_size'],
-        random_state=config['data']['random_state']
     )
 
     # 8. Feature importance
@@ -181,7 +204,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Pipeline de treinamento do modelo')
     parser.add_argument('--data', type=str, default=None, help='Caminho para arquivo de dados')
     parser.add_argument('--model', type=str, default='random_forest',
-                       choices=['random_forest', 'gradient_boosting', 'logistic'],
+                       choices=['random_forest', 'gradient_boosting'],
                        help='Tipo de modelo')
     parser.add_argument('--no-compare', action='store_true', help='Não comparar modelos')
 

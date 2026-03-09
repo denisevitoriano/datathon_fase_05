@@ -115,10 +115,10 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         },
         'features': {
             'numeric': [
-                'inde', 'iaa', 'ieg', 'ips', 'ipp', 'ida', 'ipv',
-                'mat', 'por', 'ing', 'idade', 'ano_ingresso', 'num_avaliacoes'
+                'iaa', 'ieg', 'ips', 'ipp', 'ida', 'ipv',
+                'mat', 'por', 'ing', 'idade'
             ],
-            'categorical': ['genero', 'instituicao', 'pedra']
+            'categorical': ['genero', 'instituicao']
         }
     }
 
