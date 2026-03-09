@@ -27,7 +27,6 @@ class StudentInput(BaseModel):
     """Schema para entrada de dados de um estudante."""
 
     # Indicadores principais (escala 0-10)
-    inde: Optional[float] = Field(None, ge=0, le=10, description="Índice de Desenvolvimento Educacional")
     iaa: Optional[float] = Field(None, ge=0, le=10, description="Indicador de Auto-Avaliação")
     ieg: Optional[float] = Field(None, ge=0, le=10, description="Indicador de Engajamento")
     ips: Optional[float] = Field(None, ge=0, le=10, description="Indicador Psicossocial")
@@ -43,17 +42,14 @@ class StudentInput(BaseModel):
     # Dados demográficos
     idade: Optional[int] = Field(None, ge=5, le=30, description="Idade do estudante")
     ano_ingresso: Optional[int] = Field(None, ge=2000, le=2030, description="Ano de ingresso no programa")
-    num_avaliacoes: Optional[int] = Field(None, ge=0, le=10, description="Número de avaliações")
 
     # Dados categóricos
     genero: Optional[str] = Field(None, description="Gênero (Masculino/Feminino)")
     instituicao: Optional[str] = Field(None, description="Tipo de instituição (Pública/Privada)")
-    pedra: Optional[str] = Field(None, description="Classificação Pedra (Ametista/Topázio/Quartzo/Agata)")
 
     class Config:
         json_schema_extra = {
             "example": {
-                "inde": 7.5,
                 "iaa": 8.0,
                 "ieg": 7.0,
                 "ips": 6.5,
@@ -65,10 +61,8 @@ class StudentInput(BaseModel):
                 "ing": 7.5,
                 "idade": 12,
                 "ano_ingresso": 2022,
-                "num_avaliacoes": 3,
                 "genero": "Masculino",
-                "instituicao": "Pública",
-                "pedra": "Topázio"
+                "instituicao": "Pública"
             }
         }
 

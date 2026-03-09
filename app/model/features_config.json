@@ -1,11 +1,6 @@
 {
   "numeric_features": [
-    "inde",
     "idade",
-    "ano_ingresso",
-    "INDE 22",
-    "INDE 23",
-    "num_avaliacoes",
     "iaa",
     "ieg",
     "ips",
@@ -14,12 +9,7 @@
     "mat",
     "por",
     "ing",
-    "Indicado",
-    "Atingiu PV",
     "ipv",
-    "Destaque IEG",
-    "Destaque IDA",
-    "Destaque IPV",
     "media_notas",
     "min_nota",
     "max_nota",
@@ -31,16 +21,10 @@
   ],
   "categorical_features": [
     "genero",
-    "instituicao",
-    "pedra"
+    "instituicao"
   ],
   "all_features": [
-    "inde",
     "idade",
-    "ano_ingresso",
-    "INDE 22",
-    "INDE 23",
-    "num_avaliacoes",
     "iaa",
     "ieg",
     "ips",
@@ -49,12 +33,7 @@
     "mat",
     "por",
     "ing",
-    "Indicado",
-    "Atingiu PV",
     "ipv",
-    "Destaque IEG",
-    "Destaque IDA",
-    "Destaque IPV",
     "media_notas",
     "min_nota",
     "max_nota",
@@ -64,7 +43,6 @@
     "ratio_ida_ieg",
     "ratio_ipv_ips",
     "genero",
-    "instituicao",
-    "pedra"
+    "instituicao"
   ]
 }
