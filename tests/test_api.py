@@ -37,7 +37,6 @@ def mock_preprocessor():
 def sample_student_input():
     """Dados de exemplo de um estudante."""
     return {
-        "inde": 7.5,
         "iaa": 8.0,
         "ieg": 7.0,
         "ips": 6.5,
@@ -49,10 +48,8 @@ def sample_student_input():
         "ing": 7.5,
         "idade": 12,
         "ano_ingresso": 2022,
-        "num_avaliacoes": 3,
         "genero": "Masculino",
-        "instituicao": "Pública",
-        "pedra": "Topázio"
+        "instituicao": "Pública"
     }
 
 
@@ -87,9 +84,9 @@ class TestPredictEndpoint:
         predictor._model = mock_model
         predictor._preprocessor = mock_preprocessor
         predictor._features_config = {
-            'all_features': ['inde', 'iaa', 'ieg', 'ips', 'ipp', 'ida', 'ipv',
+            'all_features': ['iaa', 'ieg', 'ips', 'ipp', 'ida', 'ipv',
                             'mat', 'por', 'ing', 'idade', 'ano_ingresso',
-                            'num_avaliacoes', 'genero', 'instituicao', 'pedra']
+                            'genero', 'instituicao']
         }
 
         response = client.post("/predict", json=sample_student_input)
@@ -110,9 +107,9 @@ class TestPredictEndpoint:
         predictor._model = mock_model
         predictor._preprocessor = mock_preprocessor
         predictor._features_config = {
-            'all_features': ['inde', 'iaa', 'ieg', 'ips', 'ipp', 'ida', 'ipv',
+            'all_features': ['iaa', 'ieg', 'ips', 'ipp', 'ida', 'ipv',
                             'mat', 'por', 'ing', 'idade', 'ano_ingresso',
-                            'num_avaliacoes', 'genero', 'instituicao', 'pedra']
+                            'genero', 'instituicao']
         }
 
         response = client.post("/predict", json=sample_student_input)
@@ -130,7 +127,7 @@ class TestPredictEndpoint:
     def test_predict_validates_input(self, client):
         """Verifica se valida entrada inválida."""
         invalid_input = {
-            "inde": 15.0,  # Valor fora do range (0-10)
+            "iaa": 15.0,  # Valor fora do range (0-10)
         }
 
         response = client.post("/predict", json=invalid_input)
@@ -155,9 +152,9 @@ class TestPredictBatchEndpoint:
         predictor._model = mock_model
         predictor._preprocessor = mock_preprocessor
         predictor._features_config = {
-            'all_features': ['inde', 'iaa', 'ieg', 'ips', 'ipp', 'ida', 'ipv',
+            'all_features': ['iaa', 'ieg', 'ips', 'ipp', 'ida', 'ipv',
                             'mat', 'por', 'ing', 'idade', 'ano_ingresso',
-                            'num_avaliacoes', 'genero', 'instituicao', 'pedra']
+                            'genero', 'instituicao']
         }
 
         batch_input = {"students": [sample_student_input, sample_student_input]}
@@ -182,9 +179,9 @@ class TestPredictBatchEndpoint:
         predictor._model = mock_model
         predictor._preprocessor = mock_preprocessor
         predictor._features_config = {
-            'all_features': ['inde', 'iaa', 'ieg', 'ips', 'ipp', 'ida', 'ipv',
+            'all_features': ['iaa', 'ieg', 'ips', 'ipp', 'ida', 'ipv',
                             'mat', 'por', 'ing', 'idade', 'ano_ingresso',
-                            'num_avaliacoes', 'genero', 'instituicao', 'pedra']
+                            'genero', 'instituicao']
         }
 
         batch_input = {"students": [sample_student_input, sample_student_input]}
@@ -250,9 +247,9 @@ class TestFeaturesEndpoint:
     def test_features_returns_200(self, mock_config, client):
         """Verifica se endpoint features retorna 200."""
         predictor._features_config = {
-            'numeric_features': ['inde', 'idade'],
+            'numeric_features': ['iaa', 'idade'],
             'categorical_features': ['genero'],
-            'all_features': ['inde', 'idade', 'genero']
+            'all_features': ['iaa', 'idade', 'genero']
         }
 
         response = client.get("/features")
@@ -265,9 +262,9 @@ class TestFeaturesEndpoint:
     def test_features_returns_feature_lists(self, mock_config, client):
         """Verifica se retorna listas de features."""
         predictor._features_config = {
-            'numeric_features': ['inde', 'idade'],
+            'numeric_features': ['iaa', 'idade'],
             'categorical_features': ['genero'],
-            'all_features': ['inde', 'idade', 'genero']
+            'all_features': ['iaa', 'idade', 'genero']
         }
 
         response = client.get("/features")

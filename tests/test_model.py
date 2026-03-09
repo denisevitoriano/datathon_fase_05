@@ -5,7 +5,7 @@ import pytest
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
 import tempfile
 import os
 
@@ -55,11 +55,6 @@ class TestGetModel:
         model = get_model('gradient_boosting')
         assert isinstance(model, GradientBoostingClassifier)
 
-    def test_returns_logistic(self):
-        """Verifica se retorna LogisticRegression."""
-        model = get_model('logistic')
-        assert isinstance(model, LogisticRegression)
-
     def test_raises_for_invalid_type(self):
         """Verifica se levanta erro para tipo inválido."""
         with pytest.raises(ValueError):
@@ -96,7 +91,7 @@ class TestTrainModel:
         """Verifica se treina diferentes tipos de modelos."""
         X, y = sample_data
 
-        for model_type in ['random_forest', 'gradient_boosting', 'logistic']:
+        for model_type in ['random_forest', 'gradient_boosting']:
             model = train_model(X, y, model_type=model_type)
             assert model is not None
 
@@ -187,8 +182,9 @@ class TestTrainAndEvaluate:
     def test_returns_model_and_metrics(self, sample_data):
         """Verifica se retorna modelo e métricas."""
         X, y = sample_data
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        model, metrics = train_and_evaluate(X, y, model_type='random_forest')
+        model, metrics = train_and_evaluate(X_train, X_test, y_train, y_test, model_type='random_forest')
 
         assert model is not None
         assert metrics is not None
@@ -197,8 +193,9 @@ class TestTrainAndEvaluate:
     def test_includes_cv_results(self, sample_data):
         """Verifica se inclui resultados de CV."""
         X, y = sample_data
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        model, metrics = train_and_evaluate(X, y)
+        model, metrics = train_and_evaluate(X_train, X_test, y_train, y_test)
 
         assert 'cv_results' in metrics
 
@@ -239,8 +236,9 @@ class TestCompareModels:
     def test_returns_comparison_df(self, sample_data):
         """Verifica se retorna DataFrame de comparação."""
         X, y = sample_data
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        comparison = compare_models(X, y, model_types=['random_forest', 'logistic'])
+        comparison = compare_models(X_train, X_test, y_train, y_test, model_types=['random_forest', 'gradient_boosting'])
 
         assert isinstance(comparison, pd.DataFrame)
         assert len(comparison) == 2
@@ -250,8 +248,9 @@ class TestCompareModels:
     def test_sorted_by_f1(self, sample_data):
         """Verifica se está ordenado por F1."""
         X, y = sample_data
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        comparison = compare_models(X, y)
+        comparison = compare_models(X_train, X_test, y_train, y_test)
 
         # Deve estar em ordem decrescente de F1
         f1_values = comparison['f1'].values

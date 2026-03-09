@@ -4,7 +4,11 @@ Testes unitários para o módulo de pré-processamento.
 import pytest
 import pandas as pd
 import numpy as np
+from unittest.mock import patch, MagicMock
+
 from src.preprocessing import (
+    load_data,
+    load_all_years,
     standardize_column_names,
     clean_data,
     create_target,
@@ -41,6 +45,55 @@ def sample_df():
     })
 
 
+class TestLoadData:
+
+    def test_returns_dataframe(self):
+        mock_df = pd.DataFrame({'col': [1, 2, 3]})
+        with patch('src.preprocessing.pd.read_excel', return_value=mock_df):
+            result = load_data('fake_path.xlsx')
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 3
+
+    def test_uses_correct_sheet(self):
+        mock_df = pd.DataFrame({'col': [1]})
+        with patch('src.preprocessing.pd.read_excel', return_value=mock_df) as mock_read:
+            load_data('fake_path.xlsx', sheet_name='PEDE2023')
+            mock_read.assert_called_once_with('fake_path.xlsx', sheet_name='PEDE2023')
+
+
+class TestLoadAllYears:
+
+    def test_returns_combined_dataframe(self):
+        mock_df = pd.DataFrame({'col': [1, 2]})
+        mock_xlsx = MagicMock()
+        mock_xlsx.sheet_names = ['PEDE2022', 'PEDE2023']
+        with patch('src.preprocessing.pd.ExcelFile', return_value=mock_xlsx), \
+             patch('src.preprocessing.pd.read_excel', return_value=mock_df):
+            result = load_all_years('fake_path.xlsx')
+        assert isinstance(result, pd.DataFrame)
+        assert 'ano_dados' in result.columns
+
+    def test_combined_has_all_rows(self):
+        mock_df = pd.DataFrame({'col': [1, 2]})
+        mock_xlsx = MagicMock()
+        mock_xlsx.sheet_names = ['PEDE2022', 'PEDE2023']
+        with patch('src.preprocessing.pd.ExcelFile', return_value=mock_xlsx), \
+             patch('src.preprocessing.pd.read_excel', return_value=mock_df):
+            result = load_all_years('fake_path.xlsx')
+        assert len(result) == 4  # 2 linhas × 2 anos
+
+    def test_ano_dados_values(self):
+        mock_xlsx = MagicMock()
+        mock_xlsx.sheet_names = ['PEDE2022', 'PEDE2024']
+        with patch('src.preprocessing.pd.ExcelFile', return_value=mock_xlsx), \
+             patch('src.preprocessing.pd.read_excel', side_effect=[
+                 pd.DataFrame({'col': [1]}),
+                 pd.DataFrame({'col': [2]}),
+             ]):
+            result = load_all_years('fake_path.xlsx')
+        assert set(result['ano_dados'].unique()) == {2022, 2024}
+
+
 class TestStandardizeColumnNames:
     """Testes para standardize_column_names."""
 
@@ -67,6 +120,43 @@ class TestStandardizeColumnNames:
 
         assert 'idade' in result.columns
         assert 'ra' in result.columns
+
+
+    def test_handles_alternative_defasagem_column(self):
+        """Cobre o elif 'Defas' → 'defasagem'."""
+        df = pd.DataFrame({'Defas': [0, -1], 'Idade': [12, 13]})
+        result = standardize_column_names(df)
+        assert 'defasagem' in result.columns
+
+    def test_handles_idade_22_column(self):
+        """Cobre o elif 'Idade 22' → 'idade'."""
+        df = pd.DataFrame({'Idade 22': [12, 13]})
+        result = standardize_column_names(df)
+        assert 'idade' in result.columns
+
+    def test_handles_nome_anonimizado_column(self):
+        """Cobre o elif 'Nome Anonimizado' → 'nome'."""
+        df = pd.DataFrame({'Nome Anonimizado': ['Aluno 1']})
+        result = standardize_column_names(df)
+        assert 'nome' in result.columns
+
+    def test_handles_fase_ideal_lowercase(self):
+        """Cobre o elif 'Fase ideal' → 'fase_ideal'."""
+        df = pd.DataFrame({'Fase ideal': ['Fase 1']})
+        result = standardize_column_names(df)
+        assert 'fase_ideal' in result.columns
+
+    def test_handles_inde_older_versions(self):
+        """Cobre elif para INDE 2023, INDE 23, INDE 22."""
+        df = pd.DataFrame({'INDE 2023': [7.5]})
+        result = standardize_column_names(df)
+        assert 'inde' in result.columns
+
+    def test_handles_pedra_older_versions(self):
+        """Cobre elif para Pedra 2023, Pedra 23, Pedra 22."""
+        df = pd.DataFrame({'Pedra 2023': ['Topázio']})
+        result = standardize_column_names(df)
+        assert 'pedra' in result.columns
 
 
 class TestCleanData:
@@ -150,7 +240,7 @@ class TestRemoveLeakyFeatures:
         df = standardize_column_names(sample_df)
         result = remove_leaky_features(df)
 
-        assert 'inde' in result.columns
+        assert 'iaa' in result.columns
         assert 'ieg' in result.columns
 
 
