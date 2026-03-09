@@ -14,6 +14,9 @@ Pipeline completa de Machine Learning incluindo:
 - Treinamento e validação de modelos
 - API para predições em tempo real
 - Monitoramento contínuo e detecção de drift
+- Dashboard de monitoramento (Grafana + Prometheus)
+- Testes automatizados com cobertura
+- Containerização com Docker e Docker Compose
 
 ### Stack Tecnológica
 
@@ -24,7 +27,7 @@ Pipeline completa de Machine Learning incluindo:
 | Frameworks ML | scikit-learn, pandas, numpy |
 | API | FastAPI |
 | Serialização | joblib |
-| Testes | pytest (119 testes, 74% cobertura) |
+| Testes | pytest (207 testes, 96% cobertura) |
 | Empacotamento | Docker |
 | Monitoramento | Prometheus + Grafana + drift detection |
 
@@ -74,6 +77,9 @@ datathon_fase_05/
 │   ├── test_feature_engineering.py  # Testes de engenharia de features
 │   ├── test_model.py             # Testes do modelo
 │   ├── test_monitoring.py        # Testes de monitoramento
+│   ├── test_monitoring_routes.py # Testes das rotas de monitoramento
+│   ├── test_pipeline.py          # Testes do pipeline
+│   ├── test_predictor.py         # Testes do predictor
 │   ├── test_preprocessing.py     # Testes de pré-processamento
 │   └── test_utils.py             # Testes de utilitários
 │
@@ -217,7 +223,7 @@ uv run pytest --cov-report=html
 - [ ] Predição individual funciona (`/predict`)
 - [ ] Predição em lote funciona (`/predict/batch`)
 - [ ] Swagger UI acessível em `/docs`
-- [ ] Testes passando com ~91% de cobertura
+- [ ] Testes passando com 96% de cobertura
 - [ ] Docker Compose sobe API, Prometheus e Grafana
 - [ ] Dashboard Grafana carregado automaticamente (provisionamento)
 
