@@ -163,3 +163,125 @@ class TestPrepareInput:
         df = prepare_input({"inde": 7.5, "iaa": 8.0})
         assert df["inde"].iloc[0] == pytest.approx(7.5)
         assert df["iaa"].iloc[0] == pytest.approx(8.0)
+
+
+class TestLoadModelArtifacts:
+    """Testes para load_model_artifacts."""
+
+    def test_success_loads_all_artifacts(self, tmp_path):
+        """Verifica se carrega todos os artefatos com sucesso."""
+        import json
+
+        model_dir = tmp_path
+        mock_model = MagicMock()
+        mock_preprocessor = MagicMock()
+        model_data = {'model': mock_model, 'metadata': {'model_type': 'rf'}}
+
+        # Create files so path.exists() returns True
+        (model_dir / 'model.joblib').touch()
+        (model_dir / 'preprocessor.joblib').touch()
+
+        features_config = {'all_features': ['inde', 'iaa']}
+        with open(model_dir / 'features_config.json', 'w') as f:
+            json.dump(features_config, f)
+
+        with patch.object(predictor, 'get_model_dir', return_value=model_dir), \
+             patch('app.model.predictor.joblib.load', side_effect=[model_data, mock_preprocessor]):
+            predictor.load_model_artifacts()
+
+        assert predictor._model is mock_model
+        assert predictor._preprocessor is mock_preprocessor
+        assert predictor._model_metadata == {'model_type': 'rf'}
+        assert predictor._features_config == features_config
+
+    def test_model_not_found_raises_error(self, tmp_path):
+        """Verifica se levanta FileNotFoundError quando modelo não existe."""
+        with patch.object(predictor, 'get_model_dir', return_value=tmp_path):
+            with pytest.raises(FileNotFoundError, match="Modelo não encontrado"):
+                predictor.load_model_artifacts()
+
+    def test_preprocessor_not_found_raises_error(self, tmp_path):
+        """Verifica se levanta FileNotFoundError quando preprocessador não existe."""
+        model_data = {'model': MagicMock(), 'metadata': {}}
+
+        # Create model.joblib file so it exists, but not preprocessor.joblib
+        model_dir = tmp_path
+        # We need the file to exist for the path check
+        (model_dir / 'model.joblib').touch()
+
+        with patch.object(predictor, 'get_model_dir', return_value=model_dir), \
+             patch('app.model.predictor.joblib.load', return_value=model_data):
+            with pytest.raises(FileNotFoundError, match="Preprocessador não encontrado"):
+                predictor.load_model_artifacts()
+
+    def test_no_features_config_uses_metadata(self, tmp_path):
+        """Verifica se usa metadata quando features_config.json não existe."""
+        features_from_meta = {'all_features': ['inde']}
+        model_data = {'model': MagicMock(), 'metadata': {'features': features_from_meta}}
+        mock_preprocessor = MagicMock()
+
+        model_dir = tmp_path
+        (model_dir / 'model.joblib').touch()
+        (model_dir / 'preprocessor.joblib').touch()
+
+        with patch.object(predictor, 'get_model_dir', return_value=model_dir), \
+             patch('app.model.predictor.joblib.load', side_effect=[model_data, mock_preprocessor]):
+            predictor.load_model_artifacts()
+
+        assert predictor._features_config == features_from_meta
+
+
+class TestGetModelLazyLoading:
+    """Testes para lazy loading em get_model e get_preprocessor."""
+
+    def test_get_model_calls_load_when_none(self):
+        """Verifica se get_model chama load_model_artifacts quando _model é None."""
+        mock_model = MagicMock()
+
+        def mock_load():
+            predictor._model = mock_model
+
+        with patch.object(predictor, 'load_model_artifacts', side_effect=mock_load):
+            result = get_model()
+
+        assert result is mock_model
+
+    def test_get_preprocessor_calls_load_when_none(self):
+        """Verifica se get_preprocessor chama load_model_artifacts quando _preprocessor é None."""
+        mock_prep = MagicMock()
+
+        def mock_load():
+            predictor._preprocessor = mock_prep
+
+        with patch.object(predictor, 'load_model_artifacts', side_effect=mock_load):
+            result = get_preprocessor()
+
+        assert result is mock_prep
+
+
+class TestPredictBatchMissingColumns:
+    """Testes para predict_batch com colunas faltantes."""
+
+    def test_missing_columns_filled_with_nan(self):
+        """Verifica se colunas faltantes são preenchidas com NaN no predict_batch."""
+        from app.model.predictor import predict_batch
+
+        mock_model = MagicMock()
+        mock_model.predict.return_value = np.array([1])
+        mock_model.predict_proba.return_value = np.array([[0.3, 0.7]])
+
+        mock_preprocessor = MagicMock()
+        mock_preprocessor.transform.return_value = np.array([[0.5, 0.3]])
+
+        predictor._model = mock_model
+        predictor._preprocessor = mock_preprocessor
+        predictor._features_config = {'all_features': ['inde', 'iaa', 'idade']}
+
+        # Only provide 'inde', missing 'iaa' and 'idade'
+        data_list = [{"inde": 7.5}]
+        results = predict_batch(data_list)
+
+        assert len(results) == 1
+        assert results[0][0] == 1
+        # Verify transform was called (meaning missing cols were handled)
+        mock_preprocessor.transform.assert_called_once()

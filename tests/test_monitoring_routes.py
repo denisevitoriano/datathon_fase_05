@@ -2,8 +2,9 @@
 Testes unitários para as rotas de monitoramento.
 """
 import pytest
+import sys
 import json
-from unittest.mock import patch, mock_open
+from unittest.mock import patch, MagicMock, mock_open
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -174,3 +175,113 @@ class TestMetricsSummaryEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert "metrics" in data
+
+
+class TestCheckDriftEndpoint:
+    """Testes para endpoint /monitoring/check-drift."""
+
+    def test_no_reference_data_returns_error(self, client):
+        """Verifica se retorna erro quando dados de referência não existem."""
+        with patch("app.monitoring_routes.Path") as mock_path_cls:
+            mock_path_instance = mock_path_cls.return_value
+            mock_path_instance.exists.return_value = False
+
+            # Mock the DriftDetector import
+            mock_detector_mod = MagicMock()
+            with patch.dict("sys.modules", {"src.monitoring": mock_detector_mod}):
+                response = client.post("/monitoring/check-drift", json={"current_data": [{"a": 1}]})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "error"
+        assert "referência" in data["message"]
+
+    def test_empty_current_data_returns_error(self, client):
+        """Verifica se retorna erro quando dados atuais são vazios."""
+        import pandas as pd
+
+        mock_ref_data = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]})
+
+        with patch("app.monitoring_routes.Path") as mock_path_cls:
+            mock_path_instance = mock_path_cls.return_value
+            mock_path_instance.exists.return_value = True
+
+            mock_detector_mod = MagicMock()
+            with patch.dict("sys.modules", {"src.monitoring": mock_detector_mod}), \
+                 patch("app.monitoring_routes.pd.read_csv", return_value=mock_ref_data):
+                response = client.post("/monitoring/check-drift", json={"current_data": []})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "error"
+        assert "não fornecidos" in data["message"]
+
+    def test_successful_drift_check(self, client):
+        """Verifica se drift check funciona corretamente."""
+        import pandas as pd
+
+        mock_ref_data = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]})
+        drift_result = {
+            "drift_detected": True,
+            "drift_count": 1,
+            "total_features": 2,
+            "timestamp": "2026-01-01"
+        }
+
+        mock_detector = MagicMock()
+        mock_detector.detect_drift.return_value = drift_result
+
+        mock_detector_cls = MagicMock(return_value=mock_detector)
+        mock_monitoring_mod = MagicMock()
+        mock_monitoring_mod.DriftDetector = mock_detector_cls
+
+        with patch("app.monitoring_routes.Path") as mock_path_cls:
+            mock_path_instance = mock_path_cls.return_value
+            mock_path_instance.exists.return_value = True
+
+            with patch.dict("sys.modules", {"src.monitoring": mock_monitoring_mod}), \
+                 patch("app.monitoring_routes.pd.read_csv", return_value=mock_ref_data):
+                response = client.post(
+                    "/monitoring/check-drift",
+                    json={"current_data": [{"col1": 10, "col2": 20}]}
+                )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["drift_detected"] is True
+        assert data["drift_count"] == 1
+
+    def test_exception_returns_500(self, client):
+        """Verifica se exceção retorna status 500."""
+        import pandas as pd
+
+        mock_ref_data = pd.DataFrame({"col1": [1, 2, 3]})
+
+        mock_detector_cls = MagicMock(side_effect=Exception("Erro no detector"))
+        mock_monitoring_mod = MagicMock()
+        mock_monitoring_mod.DriftDetector = mock_detector_cls
+
+        with patch("app.monitoring_routes.Path") as mock_path_cls:
+            mock_path_instance = mock_path_cls.return_value
+            mock_path_instance.exists.return_value = True
+
+            with patch.dict("sys.modules", {"src.monitoring": mock_monitoring_mod}), \
+                 patch("app.monitoring_routes.pd.read_csv", return_value=mock_ref_data):
+                response = client.post(
+                    "/monitoring/check-drift",
+                    json={"current_data": [{"col1": 10}]}
+                )
+
+        assert response.status_code == 500
+
+
+class TestMetricsSummaryErrorHandling:
+    """Testes para tratamento de erros no metrics-summary."""
+
+    def test_exception_returns_500(self, client):
+        """Verifica se exceção no metrics-summary retorna 500."""
+        with patch("pathlib.Path.exists", return_value=True), \
+             patch("builtins.open", side_effect=Exception("Erro de leitura")):
+            response = client.get("/monitoring/metrics-summary")
+
+        assert response.status_code == 500

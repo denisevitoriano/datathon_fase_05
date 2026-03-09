@@ -176,3 +176,121 @@ class TestMetricsLogger:
 
             assert isinstance(result, str)
             assert result.endswith('.json')
+
+
+class TestSetupLoggingWithFile:
+    """Testes para setup_logging com arquivo de log."""
+
+    def test_creates_log_file(self):
+        """Verifica se cria arquivo de log."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_file = os.path.join(tmpdir, 'subdir', 'test.log')
+            logger = setup_logging(log_file=log_file)
+
+            logger.info("Mensagem de teste")
+
+            assert os.path.exists(log_file)
+
+    def test_creates_parent_directory(self):
+        """Verifica se cria diretório pai do arquivo de log."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_file = os.path.join(tmpdir, 'nested', 'dir', 'test.log')
+            setup_logging(log_file=log_file)
+
+            assert os.path.exists(os.path.join(tmpdir, 'nested', 'dir'))
+
+    def test_file_handler_added(self):
+        """Verifica se file handler é adicionado ao logger."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_file = os.path.join(tmpdir, 'test.log')
+            logger = setup_logging(log_file=log_file)
+
+            file_handlers = [
+                h for h in logger.handlers
+                if isinstance(h, logging.FileHandler)
+            ]
+            assert len(file_handlers) >= 1
+
+
+class TestLoadConfigWithFile:
+    """Testes para load_config com arquivo de configuração."""
+
+    def test_loads_config_from_file(self):
+        """Verifica se carrega configuração de arquivo."""
+        import json as json_mod
+        custom_config = {"model": {"type": "xgboost"}}
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json_mod.dump(custom_config, f)
+            config_path = f.name
+
+        try:
+            result = load_config(config_path=config_path)
+            assert result['model']['type'] == 'xgboost'
+        finally:
+            os.unlink(config_path)
+
+    def test_merges_with_default_config(self):
+        """Verifica se faz merge com configuração padrão."""
+        import json as json_mod
+        custom_config = {"custom_key": "custom_value"}
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json_mod.dump(custom_config, f)
+            config_path = f.name
+
+        try:
+            result = load_config(config_path=config_path)
+            assert 'custom_key' in result
+            assert 'data' in result  # Default key still present
+        finally:
+            os.unlink(config_path)
+
+    def test_nonexistent_path_returns_default(self):
+        """Verifica se retorna padrão quando caminho não existe."""
+        result = load_config(config_path='/tmp/nonexistent_config_12345.json')
+        assert 'model' in result
+        assert result['model']['type'] == 'random_forest'
+
+
+class TestSaveConfig:
+    """Testes para save_config."""
+
+    def test_saves_config_to_file(self):
+        """Verifica se salva configuração em arquivo."""
+        from src.utils import save_config
+        import json as json_mod
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = os.path.join(tmpdir, 'config.json')
+            config = {"model": {"type": "xgboost"}}
+
+            save_config(config, config_path)
+
+            assert os.path.exists(config_path)
+            with open(config_path, 'r') as f:
+                saved = json_mod.load(f)
+            assert saved['model']['type'] == 'xgboost'
+
+    def test_creates_parent_directories(self):
+        """Verifica se cria diretórios pai."""
+        from src.utils import save_config
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = os.path.join(tmpdir, 'nested', 'dir', 'config.json')
+            save_config({"key": "value"}, config_path)
+
+            assert os.path.exists(config_path)
+
+    def test_saves_with_utf8_encoding(self):
+        """Verifica se salva com encoding UTF-8."""
+        from src.utils import save_config
+        import json as json_mod
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = os.path.join(tmpdir, 'config.json')
+            config = {"descrição": "configuração com acentos"}
+
+            save_config(config, config_path)
+
+            with open(config_path, 'r', encoding='utf-8') as f:
+                saved = json_mod.load(f)
+            assert saved['descrição'] == 'configuração com acentos'

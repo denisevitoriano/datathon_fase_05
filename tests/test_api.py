@@ -275,3 +275,66 @@ class TestFeaturesEndpoint:
         assert "numeric_features" in data
         assert "categorical_features" in data
         assert "total" in data
+
+
+class TestPredictErrorHandling:
+    """Testes para tratamento de erros no endpoint /predict."""
+
+    def test_predict_returns_500_on_internal_error(self, client, sample_student_input):
+        """Verifica se retorna 500 quando ocorre erro interno na predição."""
+        predictor._model = MagicMock()
+        predictor._preprocessor = MagicMock()
+        predictor._preprocessor.transform.side_effect = Exception("Erro no preprocessamento")
+        predictor._features_config = {
+            'all_features': ['iaa', 'ieg', 'ips', 'ipp', 'ida', 'ipv',
+                            'mat', 'por', 'ing', 'idade', 'ano_ingresso',
+                            'genero', 'instituicao']
+        }
+
+        response = client.post("/predict", json=sample_student_input)
+
+        predictor._model = None
+        predictor._preprocessor = None
+        predictor._features_config = None
+
+        assert response.status_code == 500
+        assert "Erro ao processar predição" in response.json()["detail"]
+
+
+class TestPredictBatchErrorHandling:
+    """Testes para tratamento de erros no endpoint /predict/batch."""
+
+    def test_batch_predict_returns_500_on_internal_error(self, client, sample_student_input):
+        """Verifica se retorna 500 quando ocorre erro interno na predição em lote."""
+        predictor._model = MagicMock()
+        predictor._preprocessor = MagicMock()
+        predictor._preprocessor.transform.side_effect = Exception("Erro no preprocessamento")
+        predictor._features_config = {
+            'all_features': ['iaa', 'ieg', 'ips', 'ipp', 'ida', 'ipv',
+                            'mat', 'por', 'ing', 'idade', 'ano_ingresso',
+                            'genero', 'instituicao']
+        }
+
+        batch_input = {"students": [sample_student_input]}
+        response = client.post("/predict/batch", json=batch_input)
+
+        predictor._model = None
+        predictor._preprocessor = None
+        predictor._features_config = None
+
+        assert response.status_code == 500
+        assert "Erro ao processar predições" in response.json()["detail"]
+
+
+class TestModelInfoNotLoaded:
+    """Testes para endpoint /model/info quando modelo não está carregado."""
+
+    def test_model_info_returns_503_when_not_loaded(self, client):
+        """Verifica se retorna 503 quando modelo não está carregado."""
+        predictor._model = None
+        predictor._preprocessor = None
+
+        response = client.get("/model/info")
+
+        assert response.status_code == 503
+        assert "Modelo não carregado" in response.json()["detail"]
