@@ -6,7 +6,6 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     roc_auc_score, classification_report, confusion_matrix
@@ -25,7 +24,7 @@ def get_model(model_type: str = 'random_forest', **kwargs) -> Any:
     Retorna instância do modelo especificado.
 
     Args:
-        model_type: Tipo do modelo ('random_forest', 'gradient_boosting', 'logistic')
+        model_type: Tipo do modelo ('random_forest', 'gradient_boosting')
         **kwargs: Parâmetros adicionais para o modelo
 
     Returns:
@@ -47,11 +46,6 @@ def get_model(model_type: str = 'random_forest', **kwargs) -> Any:
             learning_rate=kwargs.get('learning_rate', 0.1),
             random_state=kwargs.get('random_state', 42)
         ),
-        'logistic': LogisticRegression(
-            max_iter=kwargs.get('max_iter', 1000),
-            random_state=kwargs.get('random_state', 42),
-            class_weight='balanced'
-        )
     }
 
     if model_type not in models:
@@ -182,42 +176,35 @@ def get_feature_importance(
 
 
 def train_and_evaluate(
-    X: np.ndarray,
-    y: np.ndarray,
+    X_train: np.ndarray,
+    X_test: np.ndarray,
+    y_train: np.ndarray,
+    y_test: np.ndarray,
     model_type: str = 'random_forest',
-    test_size: float = 0.2,
-    random_state: int = 42,
     **kwargs
 ) -> Tuple[Any, Dict[str, Any]]:
     """
-    Pipeline completo de treino e avaliação.
+    Pipeline completo de treino e avaliação com dados já splitados.
 
     Args:
-        X: Features
-        y: Target
+        X_train: Features de treino (já pré-processadas)
+        X_test: Features de teste (já pré-processadas)
+        y_train: Target de treino
+        y_test: Target de teste
         model_type: Tipo do modelo
-        test_size: Proporção do conjunto de teste
-        random_state: Seed para reprodutibilidade
         **kwargs: Parâmetros do modelo
 
     Returns:
         Tupla (modelo treinado, métricas)
     """
-    # Split dos dados
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state, stratify=y
-    )
-
-    logger.info(f"Split: {X_train.shape[0]} treino, {X_test.shape[0]} teste")
-
     # Treina modelo
     model = train_model(X_train, y_train, model_type, **kwargs)
 
-    # Avalia modelo
+    # Avalia modelo no conjunto de teste
     metrics = evaluate_model(model, X_test, y_test)
 
-    # Validação cruzada
-    cv_results = cross_validate_model(get_model(model_type, **kwargs), X, y)
+    # Validação cruzada apenas no conjunto de treino
+    cv_results = cross_validate_model(get_model(model_type, **kwargs), X_train, y_train)
     metrics['cv_results'] = cv_results
 
     return model, metrics
@@ -258,31 +245,29 @@ def load_model(path: str) -> Tuple[Any, Dict]:
 
 
 def compare_models(
-    X: np.ndarray,
-    y: np.ndarray,
+    X_train: np.ndarray,
+    X_test: np.ndarray,
+    y_train: np.ndarray,
+    y_test: np.ndarray,
     model_types: list = None,
-    test_size: float = 0.2
 ) -> pd.DataFrame:
     """
-    Compara performance de diferentes modelos.
+    Compara performance de diferentes modelos com dados já splitados.
 
     Args:
-        X: Features
-        y: Target
+        X_train: Features de treino (já pré-processadas)
+        X_test: Features de teste (já pré-processadas)
+        y_train: Target de treino
+        y_test: Target de teste
         model_types: Lista de tipos de modelo a comparar
-        test_size: Proporção do conjunto de teste
 
     Returns:
         DataFrame com comparação de métricas
     """
     if model_types is None:
-        model_types = ['random_forest', 'gradient_boosting', 'logistic']
+        model_types = ['random_forest', 'gradient_boosting']
 
     results = []
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=42, stratify=y
-    )
 
     for model_type in model_types:
         logger.info(f"Avaliando {model_type}...")
