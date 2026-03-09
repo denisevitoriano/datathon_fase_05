@@ -44,7 +44,7 @@ def create_derived_features(df: pd.DataFrame) -> pd.DataFrame:
         df['anos_no_programa'] = 2024 - df['ano_ingresso']
 
     # Indicador composto de desempenho
-    indicator_cols = ['inde', 'iaa', 'ieg', 'ips', 'ida', 'ipv']
+    indicator_cols = ['iaa', 'ieg', 'ips', 'ida', 'ipv']
     available_indicators = [c for c in indicator_cols if c in df.columns]
     if available_indicators:
         df['media_indicadores'] = df[available_indicators].mean(axis=1)
@@ -73,8 +73,10 @@ def get_numeric_features(df: pd.DataFrame) -> List[str]:
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
 
     # Remove colunas que não devem ser features
-    exclude = {'target', 'defasagem', 'ian', 'ano_dados'}
-    numeric_cols = [c for c in numeric_cols if c not in exclude]
+    exclude = {'target', 'defasagem', 'ian', 'ano_dados', 'ano_ingresso', 'num_avaliadores', 'Indicado', 'Atingiu PV'}
+    numeric_cols = [c for c in numeric_cols if c not in exclude
+                    and not c.startswith('INDE ')
+                    and not c.startswith('Destaque')]
 
     return numeric_cols
 
@@ -90,7 +92,7 @@ def get_categorical_features(df: pd.DataFrame) -> List[str]:
         Lista de nomes de colunas categóricas
     """
     # Colunas categóricas úteis
-    potential_cat = ['genero', 'instituicao', 'pedra']
+    potential_cat = ['genero', 'instituicao']
 
     cat_cols = [c for c in potential_cat if c in df.columns]
     return cat_cols
