@@ -5,7 +5,12 @@ Define endpoints para predição e monitoramento.
 from fastapi import APIRouter, HTTPException
 from datetime import datetime
 import logging
+import time
 
+from app.metrics import (
+    PREDICTIONS_TOTAL, PREDICTION_PROBABILITY,
+    PREDICTION_LATENCY, BATCH_SIZE, AT_RISK_RATE
+)
 from app.schemas import (
     StudentInput, PredictionOutput, BatchInput, BatchPredictionOutput,
     HealthResponse, ModelInfoResponse
@@ -37,8 +42,16 @@ async def predict_risk(student: StudentInput):
         # Converte para dicionário
         data = student.model_dump()
 
-        # Faz predição
+        # Faz predição com medição de tempo
+        start = time.perf_counter()
         prediction, probability = predict(data)
+        PREDICTION_LATENCY.observe(time.perf_counter() - start)
+
+        # Atualiza métricas Prometheus
+        risk_label = "at_risk" if prediction == 1 else "not_at_risk"
+        PREDICTIONS_TOTAL.labels(risk_level=risk_label).inc()
+        PREDICTION_PROBABILITY.observe(probability)
+        AT_RISK_RATE.set(probability if prediction == 1 else 0)
 
         # Monta resposta
         return PredictionOutput(
@@ -64,14 +77,22 @@ async def predict_risk_batch(batch: BatchInput):
         # Converte para lista de dicionários
         data_list = [s.model_dump() for s in batch.students]
 
-        # Faz predições em lote
+        # Faz predições em lote com medição de tempo
+        start = time.perf_counter()
         results = predict_batch(data_list)
+        elapsed = time.perf_counter() - start
+        PREDICTION_LATENCY.observe(elapsed)
+        BATCH_SIZE.observe(len(data_list))
 
         # Monta respostas
         predictions = []
         at_risk_count = 0
 
         for prediction, probability in results:
+            risk_label = "at_risk" if prediction == 1 else "not_at_risk"
+            PREDICTIONS_TOTAL.labels(risk_level=risk_label).inc()
+            PREDICTION_PROBABILITY.observe(probability)
+
             if prediction == 1:
                 at_risk_count += 1
 
@@ -83,6 +104,7 @@ async def predict_risk_batch(batch: BatchInput):
             ))
 
         total = len(predictions)
+        AT_RISK_RATE.set(at_risk_count / total * 100 if total > 0 else 0)
 
         return BatchPredictionOutput(
             predictions=predictions,

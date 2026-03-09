@@ -9,6 +9,8 @@ import pandas as pd
 import json
 from pathlib import Path
 
+from app.metrics import DRIFT_DETECTED, DRIFT_FEATURES_COUNT, DRIFT_TOTAL_FEATURES
+
 router = APIRouter(prefix="/monitoring", tags=["Monitoramento"])
 
 # Armazenamento em memória para demo
@@ -131,6 +133,11 @@ async def check_drift(data: dict):
         feature_columns = reference_data.select_dtypes(include=['number']).columns.tolist()
         detector = DriftDetector(reference_data, feature_columns)
         drift_result = detector.detect_drift(current_data)
+
+        # Atualiza métricas Prometheus
+        DRIFT_DETECTED.set(1 if drift_result.get("drift_detected") else 0)
+        DRIFT_FEATURES_COUNT.set(drift_result.get("drift_count", 0))
+        DRIFT_TOTAL_FEATURES.set(drift_result.get("total_features", 0))
 
         _drift_reports.append(drift_result)
 
